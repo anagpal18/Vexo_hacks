@@ -1,0 +1,6 @@
+{
+  "name": "careloop-gemini",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@google/genai": "3.3.0" }
+}
