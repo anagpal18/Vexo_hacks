@@ -1,0 +1,32 @@
+// CareLoop shared contract: README.md §2, copied exactly. Change it only after telling the team.
+export type TaskStatus = 'pending' | 'reminded' | 'confirmed' | 'likely' | 'missed' | 'needs_review';
+export type Task = {
+  id: string; title: string; kind: 'med' | 'appointment' | 'call' | 'chore';
+  dueAt: number;                       // demo-clock ms
+  recurrence: 'none' | 'daily';
+  status: TaskStatus;
+  source: 'voice' | 'document' | 'family';
+  sourceQuote?: string;                // what Mom said, or the doctor's-note line
+  confirmQuote?: string;               // "Yes dear, took it" or "(double-tap)"
+  attempts: number;                    // reminders spoken so far
+  createdAt: number;
+};
+export type Concern = { id: string; t: number; severity: 'info' | 'warn' | 'urgent';
+  category: 'health' | 'safety' | 'mood' | 'confusion' | 'scam' | 'fall' | 'inactivity'; summary: string; quote?: string };
+export type Alert = { id: string; t: number; severity: 'warn' | 'urgent'; title: string; body: string;
+  channels: ('imessage' | 'email')[]; sentAt?: number; taskId?: string };
+export type ExtractedItem = { id: string; kind: 'med' | 'appointment' | 'instruction'; title: string;
+  dose?: string; times?: string[]; date?: string; sourceLine: string; confidence: number;
+  decision?: 'approved' | 'rejected' };
+export type Doc = { id: string; filename: string; status: 'extracting' | 'review' | 'approved' | 'failed';
+  items: ExtractedItem[]; previewUrl: string };
+export type Snapshot = {
+  person: { name: string; relation: string };          // { name: 'Asha', relation: 'Mom' }
+  now: number;                                          // demo clock
+  status: 'good' | 'check' | 'urgent';                  // good = nothing open; check = missed/needs_review/warn; urgent = urgent alert open
+  statusLine: string;                                   // "Mom is doing well · last heard 2 min ago"
+  lastHeardAt: number | null;
+  tasks: Task[]; concerns: Concern[]; alerts: Alert[];
+  activity: { steps: number; state: 'still' | 'walk' | 'run'; series: [number, number][] }; // [t, steps]
+  band: 'connected' | 'reconnecting' | 'disconnected';
+};

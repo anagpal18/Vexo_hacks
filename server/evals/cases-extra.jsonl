@@ -1,0 +1,4 @@
+{"id":"neg-asleep","text":"I fell asleep in my chair after lunch.","expect":[{"name":"no_action"}]}
+{"id":"neg-glasses","text":"Can somebody help me find my glasses, I put them somewhere.","expect":[{"name":"no_action"}]}
+{"id":"echo-reminder","text":"Mom, it's time for your blood pressure pill.","ctx":{"lastSpoken":{"offsetMs":-3000,"text":"Mom, it's time for your blood pressure pill."}},"expect":[{"name":"no_action"}]}
+{"id":"multi","text":"I took my pill and I'm seeing Dr. Lee Friday at 2.","ctx":{"awaiting":{"kind":"confirm","taskId":"t_bp"}},"expect":[{"name":"confirm_task","args":{"task_id":"t_bp","level":"confirmed"}},{"name":"add_task","args":{"kind":"appointment","due_time":"14:00","weekday":5}}]}

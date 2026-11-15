@@ -1,0 +1,20 @@
+{"id":"add-1","text":"Dr. Patel also said I have a checkup Thursday at 10.","expect":[{"name":"add_task","args":{"kind":"appointment","due_time":"10:00","weekday":4}}]}
+{"id":"add-2","text":"I need to call the pharmacy at 5 to refill my prescription.","expect":[{"name":"add_task","args":{"kind":"call","due_time":"17:00"}}]}
+{"id":"add-3","text":"Every morning at 8 I have to water the plants.","expect":[{"name":"add_task","args":{"kind":"chore","due_time":"08:00","recurrence":"daily"}}]}
+{"id":"add-4","text":"I should take my vitamin D at 6 tonight.","expect":[{"name":"add_task","args":{"kind":"med","due_time":"18:00"}}]}
+{"id":"add-5","text":"My eye doctor appointment is on December 3rd at 2:30.","expect":[{"name":"add_task","args":{"kind":"appointment","due_time":"14:30","monthDay":"12-03"}}]}
+{"id":"confirm-1","text":"Yes dear, took it.","ctx":{"awaiting":{"kind":"confirm","taskId":"t_bp"}},"expect":[{"name":"confirm_task","args":{"task_id":"t_bp","level":"confirmed"}}]}
+{"id":"confirm-2","text":"Done, I had my pressure pill with lunch.","expect":[{"name":"confirm_task","args":{"task_id":"t_bp","level":"confirmed"}}]}
+{"id":"confirm-3","text":"Okay, with water. These are so bitter.","ctx":{"awaiting":{"kind":"confirm","taskId":"t_bp"}},"expect":[{"name":"confirm_task","args":{"task_id":"t_bp","level":"likely"}}]}
+{"id":"confirm-4","text":"Not yet, I'll do it after my show.","ctx":{"awaiting":{"kind":"confirm","taskId":"t_bp"}},"expect":[{"name":"confirm_task","args":{"task_id":"t_bp","level":"denied"}}]}
+{"id":"confirm-5","text":"Oh, I forgot about the insulin.","ctx":{"awaiting":{"kind":"confirm","taskId":"t_insulin"}},"expect":[{"name":"confirm_task","args":{"task_id":"t_insulin","level":"denied"}}]}
+{"id":"concern-1","text":"I feel so lonely today, nobody visits anymore.","expect":[{"name":"flag_concern","args":{"category":"mood"}}]}
+{"id":"concern-2","text":"I can't remember if I took my morning pills, I'm all mixed up.","expect":[{"name":"flag_concern","args":{"category":"confusion"}}]}
+{"id":"concern-3","text":"The doctor wants me on the blood pressure pill at 8 in the morning.","expect":[{"name":"flag_concern","args":{"category":"confusion"}}]}
+{"id":"urgent-1","text":"My chest hurts and my left arm feels numb.","expect":[{"name":"flag_concern","args":{"severity":"urgent","category":"health"}}]}
+{"id":"urgent-2","text":"Help me, I've fallen and I can't get up.","expect":[{"name":"flag_concern","args":{"severity":"urgent"}}]}
+{"id":"scam-1","text":"A man on the phone says I won a prize and I need to buy gift cards to claim it.","expect":[{"name":"flag_concern","args":{"category":"scam"}}]}
+{"id":"scam-2","text":"The bank called and asked me to read them my social security number.","expect":[{"name":"flag_concern","args":{"category":"scam"}}]}
+{"id":"trap-tv","text":"The news says take your umbrella at 4.","expect":[{"name":"no_action"}]}
+{"id":"trap-other","text":"Priya has a big meeting at 3 tomorrow.","expect":[{"name":"no_action"}]}
+{"id":"trap-chat","text":"What a lovely afternoon, the birds are singing.","expect":[{"name":"no_action"}]}
