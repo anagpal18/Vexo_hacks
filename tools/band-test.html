@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Band Test</title>
+<style>
+  :root { --bg: #f9f9f7; --fg: #0b0b0b; --muted: #52514e; --line: #ddd; --ok: #0a7d32; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d0d0d; --fg: #f0efec; --muted: #c3c2b7; --line: #333; --ok: #4ade80; } }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .card b { display: block; font-size: 30px; font-variant-numeric: tabular-nums; }
+  .card span { color: var(--muted); font-size: 13px; }
+  button { font: inherit; padding: 8px 16px; }
+  #log { color: var(--muted); font-size: 14px; white-space: pre-line; }
+  .ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<h2>CareLoop band test</h2>
+<p>Close other band tabs, double-tap the band, then Connect. Drop the band onto a pillow 5 times (free-fall), double-tap it, walk around.</p>
+<label>Band number <input id="n" type="number" min="1" max="999" style="width:70px"></label>
+<label><input id="sim" type="checkbox"> Pretend band</label>
+<button id="go">Connect</button>
+<p id="status">Not connected.</p>
+<div class="grid">
+  <div class="card"><b id="ff">0</b><span>free-fall (want 5/5 drops)</span></div>
+  <div class="card"><b id="dt">0</b><span>double-tap</span></div>
+  <div class="card"><b id="tp">0</b><span>tap</span></div>
+  <div class="card"><b id="act">-</b><span>activity (steps · state)</span></div>
+  <div class="card"><b id="aps">-</b><span>audio packets/s (want 50)</span></div>
+  <div class="card"><b id="bat">-</b><span>battery %</span></div>
+</div>
+<div id="log"></div>
+<script type="module">
+  import { Band, SimTransport } from '../web/src/vexo/index.js';
+  const $ = (id) => document.getElementById(id);
+  const q = new URLSearchParams(location.search); if (q.get('band')) $('n').value = q.get('band');
+  const count = { 'free-fall': 0, 'double-tap': 0, tap: 0 };
+  const log = (t) => { $('log').textContent = `${new Date().toLocaleTimeString()}  ${t}\n` + $('log').textContent.split('\n').slice(0, 14).join('\n'); };
+  let audio = 0, sim = null;
+  $('go').onclick = async () => {
+    try {
+      const n = Number($('n').value);
+      if (!Number.isInteger(n) || n < 1) { $('status').textContent = 'Type your band number first.'; return; }
+      sim = $('sim').checked ? new SimTransport(n) : null;
+      $('status').textContent = sim ? 'Connecting to the pretend band...' : 'Connecting... pick Vexo-HACK-' + String(n).padStart(2, '0') + ' in the list.';
+      const band = await Band.connect(n, { transport: sim ?? 'ble', autoReconnect: true });
+      band.on('event', (e) => { if (e.kind in count) { count[e.kind]++; $('ff').textContent = count['free-fall']; $('dt').textContent = count['double-tap']; $('tp').textContent = count.tap; log(e.kind); } });
+      band.on('activity', (a) => { $('act').textContent = `${a.steps} · ${a.state}`; });
+      band.on('battery', (b) => { $('bat').textContent = b.percent ?? b.level ?? '-'; });
+      band.on('audio', () => audio++);
+      band.on('reconnecting', () => { $('status').textContent = 'Reconnecting...'; });
+      band.on('reconnected', () => { $('status').textContent = `Connected to ${band.name}.`; });
+      await band.configure({ audio: true, events: true, activity: true, battery: 60 });
+      $('status').textContent = `Connected to ${band.name}. Microphone on (blue light): tell people nearby.`;
+      $('status').className = 'ok';
+      setInterval(() => { $('aps').textContent = audio; audio = 0; }, 1000);
+      if (sim) { sim.setActivity('walk'); setTimeout(() => sim.tap('free-fall'), 1000); setTimeout(() => sim.tap('double-tap'), 2000); }
+    } catch (e) { $('status').textContent = e.message; }
+  };
+</script>
+</body>
+</html>

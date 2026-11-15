@@ -3,7 +3,7 @@
 //   2. Hydrogen with native function declarations, tool_choice 'any', thinking 'low'
 //   3. code checks on every call: grounded quote, real task id, dates from the demo clock,
 //      doctor's-note contradictions become a concern, im_ok only during a fall check
-import { ai, MODELS, withTimeout, errMsg } from './client.ts';
+import { ai, aiBeta, MODELS, withTimeout, errMsg } from './client.ts';
 import { guardrails } from './guardrails.ts';
 import type { Action, UnderstandCtx, UnderstandResult } from './types.ts';
 
@@ -151,6 +151,8 @@ export async function understandOnce(utterance: { text: string; t: number }, ctx
   const g = guardrails(text);
   if (g.length) return { ...base, actions: g, latencyMs: 0, model: 'guardrail', source: 'guardrail' };
   if (isEcho(text, ctx)) return { ...base, actions: [{ name: 'no_action', args: {} }], latencyMs: 0, model: 'echo', source: 'echo' };
+  const fast = await confirmFastPath(text, ctx);
+  if (fast) return { ...base, ...fast };
   const t0 = Date.now();
   try {
     const res: any = await withTimeout(ai().interactions.create({
@@ -168,6 +170,41 @@ export async function understandOnce(utterance: { text: string; t: number }, ctx
   } catch (e) {
     console.warn(`[understand] ${model} failed: ${errMsg(e)}`);
     return { ...base, actions: [{ name: 'no_action', args: {} }], latencyMs: Date.now() - t0, model, source: 'fallback' };
+  }
+}
+
+// ---------------------------------------------------------------- Decision 1 fast path (awaiting a confirmation)
+const FAST_MAX_WORDS = 10;
+const HAS_TIME = /\b(\d|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|noon|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|evening|tonight|appointment|doctor|dr)\b/i;
+/**
+ * While a reminder waits for an answer, a short reply ("Yes dear, took it", "not yet") is a closed choice: Gemini
+ * Decision 1 answers it in ~0.4 s with a calibrated confidence. Long replies, or ones that mention a time/day/doctor
+ * (maybe a new task too), and anything below 0.8 confidence go to Hydrogen.
+ */
+async function confirmFastPath(text: string, ctx: UnderstandCtx): Promise<Omit<UnderstandResult, 'text' | 'dropped'> | null> {
+  if (process.env.UNDERSTAND_FAST_PATH === 'off' || ctx.awaiting?.kind !== 'confirm') return null;
+  if (text.split(/\s+/).length > FAST_MAX_WORDS || HAS_TIME.test(text)) return null;
+  const task = ctx.openTasks.find((t) => t.id === (ctx.awaiting as { taskId: string }).taskId);
+  if (!task) return null;
+  const t0 = Date.now();
+  try {
+    const res: any = await withTimeout(aiBeta().decisions.create({
+      model: MODELS.decision,
+      input: `An older adult was just reminded: "it's time for your ${task.title}". She replied: "${text}"`,
+      questions: { reply: { type: 'choice', instructions: 'What does her reply mean about this task?', criteria: {
+        confirmed: 'She clearly says it is done (took it, done, had it, yes I did).',
+        denied: 'Not done yet: not yet, later, I forgot, in a minute, no.',
+        likely: 'Indirect sign it is done or being done (these pills are bitter, okay with water).',
+        other: 'About something else, unclear, or more than an answer about this task.',
+      } } },
+    } as any), 2500, 'decision');
+    const a = res?.answers?.reply;
+    if (!a || a.choice === 'other' || (a.confidence ?? 0) < 0.8) return null;
+    return { actions: [{ name: 'confirm_task', args: { task_id: task.id, level: a.choice, quote: text } }],
+      latencyMs: Date.now() - t0, model: MODELS.decision, source: 'model' };
+  } catch (e) {
+    console.warn(`[understand] fast path skipped: ${errMsg(e)}`);
+    return null;
   }
 }
 

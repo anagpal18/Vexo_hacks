@@ -39,7 +39,7 @@ async function runCase(c) {
   const o = { ...(c.ctx ?? {}) };
   if (o.lastSpoken) o.lastSpoken = { t: NOW + (o.lastSpoken.offsetMs ?? 0), text: o.lastSpoken.text };
   const r = await understandOnce({ text: c.text, t: NOW }, baseCtx(o), model);
-  return { id: c.id, text: c.text, pass: score(c, r.actions), latencyMs: r.latencyMs, source: r.source,
+  return { id: c.id, text: c.text, pass: score(c, r.actions), latencyMs: r.latencyMs, source: r.source, model: r.model,
     got: r.actions.map((a) => ({ name: a.name, ...a.args, quote: undefined, dueAt: undefined })), want: c.expect };
 }
 
@@ -48,10 +48,15 @@ const results = [];
 for (let i = 0; i < cases.length; i += 4) results.push(...await Promise.all(cases.slice(i, i + 4).map(runCase)));
 
 const pass = results.filter((r) => r.pass).length;
-const modelTimes = results.filter((r) => r.source === 'model').map((r) => r.latencyMs).sort((a, b) => a - b);
-const median = modelTimes.length ? modelTimes[Math.floor(modelTimes.length / 2)] : 0;
-const guard = results.filter((r) => r.source === 'guardrail').length;
-const name = model.replace('gemini-4-', '').replace(/^./, (c) => c.toUpperCase());
+const med = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+const modelTimes = results.filter((r) => r.source === 'model' && r.model === model).map((r) => r.latencyMs);
+const median = med(modelTimes);
+const fast = results.filter((r) => r.model === 'gemini-decision-1').map((r) => r.latencyMs);
+const guard = results.filter((r) => r.source === 'guardrail' || r.source === 'echo').length;
+const pretty = (m) => m.replace('gemini-4-', '').replace(/^./, (c) => c.toUpperCase());
+const name = pretty(model);
 for (const r of results) console.log(`${r.pass ? 'PASS' : 'MISS'}  ${r.id.padEnd(14)} ${String(r.latencyMs).padStart(5)} ms  ${r.source.padEnd(9)} ${r.pass ? '' : `"${r.text}"\n        got  ${JSON.stringify(r.got)}\n        want ${JSON.stringify(r.want)}`}`);
-console.log(`\n${name}: ${pass}/${results.length} correct · median ${(median / 1000).toFixed(1)} s per model call · ${guard} answered instantly by guardrails`);
-writeFileSync(join(here, `results-${model}.json`), JSON.stringify({ model, pass, total: results.length, medianMs: median, guardrail: guard, at: new Date().toISOString(), results }, null, 2));
+console.log(`\n${name}: ${pass}/${results.length} correct · ${name} median ${(median / 1000).toFixed(1)} s (${modelTimes.length} calls)`
+  + (fast.length ? ` · Decision 1 fast path median ${(med(fast) / 1000).toFixed(2)} s (${fast.length} confirmations)` : '')
+  + ` · ${guard} instant (guardrails / echo)`);
+writeFileSync(join(here, `results-${model}.json`), JSON.stringify({ model, pass, total: results.length, medianMs: median, fastPathMedianMs: med(fast), instant: guard, at: new Date().toISOString(), results }, null, 2));
