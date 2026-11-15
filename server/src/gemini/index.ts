@@ -6,4 +6,7 @@ export { ask } from './ask.ts';
 export { digest } from './digest.ts';
 export { MODELS, hasKey } from './client.ts';
 export type { Action, Awaiting, UnderstandCtx, UnderstandResult } from './types.ts';
+export { dayLogFromSnapshot } from './daylog.ts';
 export type { DayLog } from './daylog.ts';
+export { NOT_IN_LOG } from './ask.ts';
+export type { ItemDraft } from './document.ts';
